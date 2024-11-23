@@ -1,51 +1,108 @@
 import java.util.*;
 class Node {
-    int x, y, cost;
-    Node(int x, int y, int cost) {
+    int x, y;
+    int distance;
+    Node parent;
+
+    Node(int x, int y, int distance, Node parent) {
         this.x = x;
         this.y = y;
-        this.cost = cost;
+        this.distance = distance;
+        this.parent = parent;
     }
 }
-public class DijkstraSimple {
-    private static final int[][] DIRECTIONS = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        int[][] grid = new int[4][4];
-        for(int i=0;i<4;i++){
-           for(int j=0;j<4;j++){
-               grid[i][j]=sc.nextInt();
-           }
-        }
-        Node start = new Node(0, 0, grid[0][0]);
-        Node end = new Node(2, 2, grid[3][2]);
-        int shortestPathCost = dijkstra(grid, start, end);
-        System.out.println("Shortest path cost: " + shortestPathCost);
+class Graph {
+    private final int[][] grid;
+    private final int rows;
+    private final int cols;
+    public Graph(int[][] grid) {
+        this.grid = grid;
+        this.rows = grid.length;
+        this.cols = grid[0].length;
     }
-    private static int dijkstra(int[][] grid, Node start, Node end) {
-        int rows = grid.length, cols = grid[0].length;
-        int[][] distances = new int[rows][cols];
+    public List<Node> getNeighbors(Node node) {
+        List<Node> neighbors = new ArrayList<>();
+        int[] dRow = {-1, 1, 0, 0};
+        int[] dCol = {0, 0, -1, 1};
+        for (int i = 0; i < 4; i++) {
+            int newRow = node.x + dRow[i];
+            int newCol = node.y + dCol[i];
+
+            if (isValid(newRow, newCol)) {
+                neighbors.add(new Node(newRow, newCol, grid[newRow][newCol], node));
+            }
+        }
+        return neighbors;
+    }
+    private boolean isValid(int row, int col) {
+        return row >= 0 && row < rows && col >= 0 && col < cols && grid[row][col] != Integer.MAX_VALUE;
+    }
+    public List<Node> dijkstra(int startX, int startY, int endX, int endY) {
+        PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparingInt(n -> n.distance));
         boolean[][] visited = new boolean[rows][cols];
-        for (int[] row : distances) Arrays.fill(row, Integer.MAX_VALUE);
-        distances[start.x][start.y] = 0;
-        PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparingInt(n -> n.cost));
-        pq.add(new Node(start.x, start.y, 0));
+        pq.add(new Node(startX, startY, grid[startX][startY], null));
         while (!pq.isEmpty()) {
             Node current = pq.poll();
-            if (current.x == end.x && current.y == end.y) return distances[current.x][current.y];
-            if (visited[current.x][current.y]) continue;
-            visited[current.x][current.y] = true;
-            for (int[] dir : DIRECTIONS) {
-                int newX = current.x + dir[0], newY = current.y + dir[1];
-                if (newX >= 0 && newX < rows && newY >= 0 && newY < cols) {
-                    int newCost = distances[current.x][current.y] + grid[newX][newY];
-                    if (newCost < distances[newX][newY]) {
-                        distances[newX][newY] = newCost;
-                        pq.add(new Node(newX, newY, newCost));
-                    }
+            int currentX = current.x;
+            int currentY = current.y;
+            if (visited[currentX][currentY]) continue;
+            visited[currentX][currentY] = true;
+            if (currentX == endX && currentY == endY) {
+                return reconstructPath(current);
+            }
+            for (Node neighbor : getNeighbors(current)) {
+                if (!visited[neighbor.x][neighbor.y]) {
+                    pq.add(new Node(neighbor.x, neighbor.y, current.distance + neighbor.distance, current));
                 }
             }
         }
-        return -1; 
+        return Collections.emptyList();
+    }
+
+    private List<Node> reconstructPath(Node endNode) {
+        List<Node> path = new ArrayList<>();
+        for (Node node = endNode; node != null; node = node.parent) {
+            path.add(node);
+        }
+        Collections.reverse(path); 
+        return path;
+    }
+}
+
+class DijkstraSimple {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Enter number of rows: ");
+        int rows = scanner.nextInt();
+        System.out.print("Enter number of columns: ");
+        int cols = scanner.nextInt();
+        int[][] grid = new int[rows][cols];
+        System.out.println("Enter the grid:");
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                grid[i][j] = scanner.nextInt();
+            }
+        }
+        System.out.print("Enter start point (row and column): ");
+        int startX = scanner.nextInt();
+        int startY = scanner.nextInt();
+        System.out.print("Enter end point (row and column): ");
+        int endX = scanner.nextInt();
+        int endY = scanner.nextInt();
+        Graph graph = new Graph(grid);
+        List<Node> path = graph.dijkstra(startX, startY, endX, endY);
+        if (!path.isEmpty()) {
+            System.out.println("Path found:");
+            int totalCost = 0;
+            for (Node node : path) {
+                System.out.println("[" + node.x + ", " + node.y + "] with cost: " + grid[node.x][node.y]);
+                totalCost += grid[node.x][node.y];
+            }
+            System.out.println("Minimum cost of the path : " + totalCost);
+        } else {
+            System.out.println("No path found.");
+        }
+
+        scanner.close();
     }
 }
